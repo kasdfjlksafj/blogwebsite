@@ -110,12 +110,15 @@ export default function BlogHomepage() {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="py-16 px-4">
+      <section className="py-20 px-4 bg-gradient-to-br from-background via-muted/20 to-background">
         <div className="container mx-auto text-center">
           <h2 className="text-4xl md:text-6xl font-bold font-heading text-foreground mb-6">
-            Share Your <span className="text-accent">Stories</span>
+            Share Your{" "}
+            <span className="text-accent bg-gradient-to-r from-accent to-accent/80 bg-clip-text text-transparent">
+              Stories
+            </span>
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
             Discover amazing stories, insights, and ideas from our community of writers and thinkers.
           </p>
 
@@ -212,7 +215,7 @@ export default function BlogHomepage() {
         </div>
       </section>
 
-      <section className="py-8 px-4">
+      <section className="py-12 px-4">
         <div className="container mx-auto">
           {/* Results count */}
           {!loading && !error && (
@@ -263,7 +266,10 @@ export default function BlogHomepage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredAndSortedBlogs.map((blog) => (
-                <Card key={blog._id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <Card
+                  key={blog._id}
+                  className="group hover:shadow-xl transition-all duration-300 overflow-hidden border-0 shadow-md"
+                >
                   <div className="aspect-video overflow-hidden">
                     <img
                       src={blog.image || "/placeholder.svg?height=200&width=400&query=blog post"}
@@ -271,29 +277,35 @@ export default function BlogHomepage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="secondary">{blog.category}</Badge>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4 mr-1" />
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge variant="secondary" className="text-xs px-2 py-1">
+                        {blog.category}
+                      </Badge>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3 mr-1" />
                         {new Date(blog.date).toLocaleDateString()}
                       </div>
                     </div>
-                    <CardTitle className="font-heading group-hover:text-accent transition-colors">
+                    <CardTitle className="font-heading group-hover:text-accent transition-colors text-lg leading-tight">
                       {blog.title}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-4 line-clamp-3">{blog.excerpt}</p>
+                  <CardContent className="pt-0">
+                    <p className="text-muted-foreground mb-4 line-clamp-3 leading-relaxed text-sm">{blog.excerpt}</p>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <User className="h-4 w-4 mr-1" />
-                        {blog.author} • {blog.readTime}
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <div className="w-5 h-5 bg-accent/10 rounded-full flex items-center justify-center mr-2">
+                          <User className="h-3 w-3 text-accent" />
+                        </div>
+                        <span className="font-medium">{blog.author}</span>
+                        <span className="mx-2">•</span>
+                        <span>{blog.readTime}</span>
                       </div>
                       <Link href={`/blog/${blog._id}`}>
-                        <Button variant="ghost" size="sm" className="group/btn">
+                        <Button variant="ghost" size="sm" className="group/btn text-xs">
                           Read More
-                          <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                          <ArrowRight className="h-3 w-3 ml-1 group-hover/btn:translate-x-1 transition-transform" />
                         </Button>
                       </Link>
                     </div>

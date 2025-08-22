@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import ImageUpload from "./image-upload"
 import {
   Bold,
   Italic,
@@ -43,11 +44,19 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     if (imageUrl) {
       executeCommand(
         "insertHTML",
-        `<img src="${imageUrl}" alt="Blog image" class="w-full rounded-lg shadow-md my-4" />`,
+        `<img src="${imageUrl}" alt="Blog image" class="w-full max-w-2xl rounded-lg shadow-md my-6 mx-auto block" />`,
       )
       setImageUrl("")
       setShowImageDialog(false)
     }
+  }
+
+  const handleImageUpload = (url: string) => {
+    executeCommand(
+      "insertHTML",
+      `<img src="${url}" alt="Blog image" class="w-full max-w-2xl rounded-lg shadow-md my-6 mx-auto block" />`,
+    )
+    setShowImageDialog(false)
   }
 
   const insertLink = () => {
@@ -175,27 +184,46 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[300px] p-4 focus:outline-none blog-content"
+        className="min-h-[300px] p-4 focus:outline-none blog-content prose prose-lg max-w-none"
         style={{ whiteSpace: "pre-wrap" }}
         dangerouslySetInnerHTML={{ __html: value }}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         data-placeholder={placeholder}
       />
 
-      {/* Image Dialog */}
       {showImageDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96">
+          <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Insert Image</h3>
-            <Input
-              placeholder="Image URL"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="mb-4"
-            />
-            <div className="flex gap-2">
-              <Button onClick={insertImage} className="flex-1">
-                Insert
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Upload Image</label>
+                <ImageUpload onImageUploaded={handleImageUpload} />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Image URL</label>
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <Button onClick={insertImage} disabled={!imageUrl} className="flex-1">
+                Insert URL
               </Button>
               <Button variant="outline" onClick={() => setShowImageDialog(false)} className="flex-1">
                 Cancel
