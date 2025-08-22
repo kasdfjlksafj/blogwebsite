@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import ImageUpload from "./image-upload"
@@ -17,7 +19,20 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const [showImageDialog, setShowImageDialog] = useState(false)
   const [imageUrl, setImageUrl] = useState("")
 
+  useEffect(() => {
+    if (editorRef.current && !editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = value || ""
+      // Force left-to-right direction
+      editorRef.current.style.direction = "ltr"
+      editorRef.current.style.textAlign = "left"
+      editorRef.current.style.unicodeBidi = "embed"
+    }
+  }, [])
+
   const executeCommand = (command: string, value?: string) => {
+    if (editorRef.current) {
+      editorRef.current.focus()
+    }
     document.execCommand(command, false, value)
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML)
@@ -25,26 +40,66 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   }
 
   const insertImage = () => {
-    if (imageUrl) {
-      executeCommand(
-        "insertHTML",
-        `<img src="${imageUrl}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px;" />`,
-      )
+    if (imageUrl && editorRef.current) {
+      editorRef.current.focus()
+      const imgHtml = `<img src="${imageUrl}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;" />`
+
+      // Insert at cursor position
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        const imgElement = document.createElement("div")
+        imgElement.innerHTML = imgHtml
+        range.insertNode(imgElement.firstChild!)
+        range.collapse(false)
+      } else {
+        // Fallback: append to end
+        editorRef.current.innerHTML += imgHtml
+      }
+
+      onChange(editorRef.current.innerHTML)
       setImageUrl("")
       setShowImageDialog(false)
+
+      console.log("[v0] Image inserted:", imageUrl)
     }
   }
 
   const handleImageUpload = (url: string) => {
-    executeCommand(
-      "insertHTML",
-      `<img src="${url}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px;" />`,
-    )
-    setShowImageDialog(false)
+    if (editorRef.current) {
+      editorRef.current.focus()
+      const imgHtml = `<img src="${url}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;" />`
+
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        const imgElement = document.createElement("div")
+        imgElement.innerHTML = imgHtml
+        range.insertNode(imgElement.firstChild!)
+        range.collapse(false)
+      } else {
+        editorRef.current.innerHTML += imgHtml
+      }
+
+      onChange(editorRef.current.innerHTML)
+      setShowImageDialog(false)
+
+      console.log("[v0] Uploaded image inserted:", url)
+    }
   }
 
   const formatHeading = (level: number) => {
     executeCommand("formatBlock", `h${level}`)
+  }
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.currentTarget
+    // Ensure direction stays left-to-right
+    target.style.direction = "ltr"
+    target.style.textAlign = "left"
+    onChange(target.innerHTML)
   }
 
   return (
@@ -103,16 +158,23 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[300px] p-4 focus:outline-none"
+        className="min-h-[300px] p-4 focus:outline-none prose max-w-none"
         style={{
           direction: "ltr",
           textAlign: "left",
           lineHeight: "1.6",
           fontSize: "16px",
+          unicodeBidi: "embed",
+          writingMode: "lr-tb",
         }}
-        dangerouslySetInnerHTML={{ __html: value }}
-        onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        data-placeholder={placeholder}
+        onInput={handleInput}
+        onFocus={() => {
+          if (editorRef.current) {
+            editorRef.current.style.direction = "ltr"
+            editorRef.current.style.textAlign = "left"
+          }
+        }}
+        suppressContentEditableWarning={true}
       />
 
       {showImageDialog && (
