@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { PlusCircle, Edit, Trash2, LogOut, Calendar, User, Save, X, Loader2, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import RichTextEditor from "@/components/rich-text-editor"
 
 interface Blog {
   _id: string
@@ -207,7 +208,7 @@ export function AdminDashboard({ onLogout, onBlogUpdate }: AdminDashboardProps) 
               <CardTitle className="font-heading">{editingId ? "Edit Blog Post" : "Create New Blog Post"}</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
@@ -250,22 +251,19 @@ export function AdminDashboard({ onLogout, onBlogUpdate }: AdminDashboardProps) 
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="content">Content</Label>
-                  <Textarea
-                    id="content"
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    placeholder="Write your blog content here..."
-                    rows={8}
-                    required
+                    onChange={(content) => setFormData({ ...formData, content })}
+                    placeholder="Write your blog content here... Use the toolbar to format text, add headings, images, and links."
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="image">Image URL (optional)</Label>
+                  <Label htmlFor="image">Featured Image URL (optional)</Label>
                   <Input
                     id="image"
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="Enter image URL or leave blank for auto-generated"
+                    placeholder="Enter featured image URL or leave blank for auto-generated"
                   />
                 </div>
                 <div className="flex space-x-2">
