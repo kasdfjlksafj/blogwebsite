@@ -117,15 +117,7 @@ export function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
                 )}
               </Button>
             </form>
-            <div className="mt-4 p-3 bg-muted rounded-md">
-              <p className="text-sm text-muted-foreground">
-                <strong>Demo Credentials:</strong>
-                <br />
-                Email: admin@gmail.com
-                <br />
-                Password: admin123___aaa22234567@@@@
-              </p>
-            </div>
+            
           </CardContent>
         </Card>
       </div>
