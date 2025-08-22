@@ -123,7 +123,7 @@ export function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
                 <br />
                 Email: admin@gmail.com
                 <br />
-                Password: admin123
+                Password: admin123___aaa22234567@@@@
               </p>
             </div>
           </CardContent>

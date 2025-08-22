@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = body
 
     // Simple admin authentication
-    if (email === "admin@gmail.com" && password === "admin123") {
+    if (email === "admin@gmail.com" && password === "admin123___aaa22234567@@@@") {
       return NextResponse.json({
         success: true,
         message: "Login successful",
