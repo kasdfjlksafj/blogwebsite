@@ -24,35 +24,110 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
   }, [value])
 
-  const saveSelection = () => {
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      return selection.getRangeAt(0)
-    }
-    return null
-  }
-
-  const restoreSelection = (range: Range | null) => {
-    if (range) {
-      const selection = window.getSelection()
-      if (selection) {
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
-    }
-  }
-
-  const executeCommand = (command: string, value?: string) => {
+  const wrapSelectedText = (tag: string, attributes?: string) => {
     if (!editorRef.current) return
 
-    editorRef.current.focus()
-    const range = saveSelection()
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
 
-    try {
-      document.execCommand(command, false, value)
-    } catch (error) {
-      console.log("[v0] Command failed:", command, error)
+    const range = selection.getRangeAt(0)
+    const selectedText = range.toString()
+
+    if (selectedText) {
+      const wrapper = document.createElement(tag)
+      if (attributes) {
+        wrapper.setAttribute("style", attributes)
+      }
+
+      try {
+        range.surroundContents(wrapper)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      } catch (e) {
+        // If surroundContents fails, use extractContents and appendChild
+        const contents = range.extractContents()
+        wrapper.appendChild(contents)
+        range.insertNode(wrapper)
+      }
     }
+
+    onChange(editorRef.current.innerHTML)
+  }
+
+  const formatHeading = (level: number) => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+
+    // Get the current line/paragraph
+    let container = range.commonAncestorContainer
+    if (container.nodeType === Node.TEXT_NODE) {
+      container = container.parentNode!
+    }
+
+    // Find the paragraph or div containing the selection
+    while (
+      container &&
+      container !== editorRef.current &&
+      !["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6"].includes((container as Element).tagName)
+    ) {
+      container = container.parentNode!
+    }
+
+    if (container && container !== editorRef.current) {
+      const heading = document.createElement(`h${level}`)
+      heading.innerHTML = (container as Element).innerHTML
+      heading.style.margin = "16px 0"
+      heading.style.fontWeight = "bold"
+      heading.style.fontSize = level === 1 ? "2em" : level === 2 ? "1.5em" : "1.25em"
+
+      container.parentNode?.replaceChild(heading, container)
+    } else {
+      // If no container found, wrap the selected text
+      const selectedText = range.toString() || "Heading"
+      const heading = document.createElement(`h${level}`)
+      heading.textContent = selectedText
+      heading.style.margin = "16px 0"
+      heading.style.fontWeight = "bold"
+      heading.style.fontSize = level === 1 ? "2em" : level === 2 ? "1.5em" : "1.25em"
+
+      range.deleteContents()
+      range.insertNode(heading)
+    }
+
+    onChange(editorRef.current.innerHTML)
+  }
+
+  const formatBold = () => {
+    wrapSelectedText("strong")
+  }
+
+  const formatItalic = () => {
+    wrapSelectedText("em")
+  }
+
+  const formatList = (ordered = false) => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    const selectedText = range.toString() || "List item"
+
+    const listTag = ordered ? "ol" : "ul"
+    const list = document.createElement(listTag)
+    const listItem = document.createElement("li")
+    listItem.textContent = selectedText
+    list.appendChild(listItem)
+    list.style.margin = "16px 0"
+    list.style.paddingLeft = "20px"
+
+    range.deleteContents()
+    range.insertNode(list)
 
     onChange(editorRef.current.innerHTML)
   }
@@ -91,7 +166,6 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
 
     onChange(editorRef.current.innerHTML)
-    console.log("[v0] Image inserted at cursor:", url)
   }
 
   const insertImage = () => {
@@ -107,51 +181,6 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     setShowImageDialog(false)
   }
 
-  const formatHeading = (level: number) => {
-    if (!editorRef.current) return
-
-    editorRef.current.focus()
-    const selection = window.getSelection()
-
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-
-      // Get the current block element
-      let blockElement = range.commonAncestorContainer
-      if (blockElement.nodeType === Node.TEXT_NODE) {
-        blockElement = blockElement.parentNode!
-      }
-
-      // Find the closest block element
-      while (
-        blockElement &&
-        blockElement !== editorRef.current &&
-        !["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6"].includes((blockElement as Element).tagName)
-      ) {
-        blockElement = blockElement.parentNode!
-      }
-
-      if (blockElement && blockElement !== editorRef.current) {
-        const heading = document.createElement(`h${level}`)
-        heading.innerHTML = (blockElement as Element).innerHTML
-        heading.style.cssText = "margin: 16px 0; font-weight: bold;"
-
-        if (blockElement.parentNode) {
-          blockElement.parentNode.replaceChild(heading, blockElement)
-        }
-
-        // Restore cursor position
-        const newRange = document.createRange()
-        newRange.selectNodeContents(heading)
-        newRange.collapse(false)
-        selection.removeAllRanges()
-        selection.addRange(newRange)
-      }
-    }
-
-    onChange(editorRef.current.innerHTML)
-  }
-
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const target = e.currentTarget
     onChange(target.innerHTML)
@@ -160,7 +189,17 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      executeCommand("insertHTML", "<br><br>")
+      const br = document.createElement("br")
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.insertNode(br)
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+      onChange(editorRef.current?.innerHTML || "")
     }
   }
 
@@ -182,31 +221,19 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button type="button" variant="ghost" size="sm" onClick={() => executeCommand("bold")} className="h-8 px-2">
+        <Button type="button" variant="ghost" size="sm" onClick={formatBold} className="h-8 px-2">
           <Bold className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => executeCommand("italic")} className="h-8 px-2">
+        <Button type="button" variant="ghost" size="sm" onClick={formatItalic} className="h-8 px-2">
           <Italic className="h-4 w-4" />
         </Button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("insertUnorderedList")}
-          className="h-8 px-2"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => formatList(false)} className="h-8 px-2">
           <List className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("insertOrderedList")}
-          className="h-8 px-2"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => formatList(true)} className="h-8 px-2">
           <ListOrdered className="h-4 w-4" />
         </Button>
 
