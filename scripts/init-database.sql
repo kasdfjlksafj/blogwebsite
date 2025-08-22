@@ -1,0 +1,23 @@
+-- Initialize MongoDB collections (this is for reference - MongoDB doesn't use SQL)
+-- This file documents the expected structure for the blogs collection
+
+-- Collection: blogs
+-- Document structure:
+-- {
+--   _id: ObjectId,
+--   title: String (required),
+--   excerpt: String (required),
+--   content: String (required),
+--   author: String (required),
+--   date: String (ISO date),
+--   category: String (required),
+--   readTime: String (calculated),
+--   image: String (URL),
+--   createdAt: Date,
+--   updatedAt: Date
+-- }
+
+-- Indexes to create:
+-- db.blogs.createIndex({ "date": -1 })
+-- db.blogs.createIndex({ "category": 1 })
+-- db.blogs.createIndex({ "title": "text", "excerpt": "text", "content": "text" })

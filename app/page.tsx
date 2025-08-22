@@ -1,56 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Calendar, User, ArrowRight, PenTool } from "lucide-react"
+import { Search, Calendar, User, ArrowRight, PenTool, Loader2 } from "lucide-react"
 import { AdminLogin } from "@/components/admin-login"
 import { AdminDashboard } from "@/components/admin-dashboard"
 
-// Mock blog data - will be replaced with database
-const mockBlogs = [
-  {
-    id: 1,
-    title: "Getting Started with Modern Web Development",
-    excerpt: "Explore the latest trends and technologies in web development, from React to Next.js and beyond.",
-    content: "Full content here...",
-    author: "Admin",
-    date: "2024-01-15",
-    category: "Technology",
-    image: "/modern-web-development.png",
-  },
-  {
-    id: 2,
-    title: "The Art of Responsive Design",
-    excerpt: "Learn how to create beautiful, responsive designs that work seamlessly across all devices.",
-    content: "Full content here...",
-    author: "Admin",
-    date: "2024-01-12",
-    category: "Design",
-    image: "/responsive-design-mobile-desktop.png",
-  },
-  {
-    id: 3,
-    title: "Building Scalable Applications",
-    excerpt: "Best practices for creating applications that can grow with your business needs.",
-    content: "Full content here...",
-    author: "Admin",
-    date: "2024-01-10",
-    category: "Development",
-    image: "/scalable-applications-architecture.png",
-  },
-]
+interface Blog {
+  _id: string
+  title: string
+  excerpt: string
+  content: string
+  author: string
+  date: string
+  category: string
+  readTime: string
+  image: string
+}
 
 export default function BlogHomepage() {
-  const [blogs, setBlogs] = useState(mockBlogs)
+  const [blogs, setBlogs] = useState<Blog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const categories = ["All", "Technology", "Design", "Development"]
+  const categories = ["All", "Technology", "Design", "Development", "Business", "Lifestyle"]
+
+  const fetchBlogs = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/blogs")
+      if (!response.ok) {
+        throw new Error("Failed to fetch blogs")
+      }
+      const data = await response.json()
+      setBlogs(data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+      console.error("Error fetching blogs:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchBlogs()
+  }, [])
 
   const filteredBlogs = blogs.filter((blog) => {
     const matchesSearch =
@@ -67,12 +69,11 @@ export default function BlogHomepage() {
   if (isAdminMode && isLoggedIn) {
     return (
       <AdminDashboard
-        blogs={blogs}
-        setBlogs={setBlogs}
         onLogout={() => {
           setIsLoggedIn(false)
           setIsAdminMode(false)
         }}
+        onBlogUpdate={fetchBlogs}
       />
     )
   }
@@ -143,47 +144,62 @@ export default function BlogHomepage() {
         </div>
       </section>
 
-      {/* Blog Posts Grid */}
       <section className="py-8 px-4">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredBlogs.map((blog) => (
-              <Card key={blog.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={blog.image || "/placeholder.svg"}
-                    alt={blog.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="secondary">{blog.category}</Badge>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {new Date(blog.date).toLocaleDateString()}
-                    </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              <span className="ml-2 text-muted-foreground">Loading blogs...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-destructive text-lg mb-4">Error: {error}</p>
+              <Button onClick={fetchBlogs} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredBlogs.map((blog) => (
+                <Card key={blog._id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <div className="aspect-video overflow-hidden">
+                    <img
+                      src={blog.image || "/placeholder.svg"}
+                      alt={blog.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
-                  <CardTitle className="font-heading group-hover:text-accent transition-colors">{blog.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-4 line-clamp-3">{blog.excerpt}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <User className="h-4 w-4 mr-1" />
-                      {blog.author}
+                  <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="secondary">{blog.category}</Badge>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {new Date(blog.date).toLocaleDateString()}
+                      </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="group/btn">
-                      Read More
-                      <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardTitle className="font-heading group-hover:text-accent transition-colors">
+                      {blog.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4 line-clamp-3">{blog.excerpt}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <User className="h-4 w-4 mr-1" />
+                        {blog.author} • {blog.readTime}
+                      </div>
+                      <Button variant="ghost" size="sm" className="group/btn">
+                        Read More
+                        <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredBlogs.length === 0 && (
+          {!loading && !error && filteredBlogs.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg">No articles found matching your search.</p>
             </div>

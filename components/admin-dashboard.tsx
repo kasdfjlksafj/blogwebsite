@@ -2,36 +2,39 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { PlusCircle, Edit, Trash2, LogOut, Calendar, User, Save, X } from "lucide-react"
+import { PlusCircle, Edit, Trash2, LogOut, Calendar, User, Save, X, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface Blog {
-  id: number
+  _id: string
   title: string
   excerpt: string
   content: string
   author: string
   date: string
   category: string
+  readTime: string
   image: string
 }
 
 interface AdminDashboardProps {
-  blogs: Blog[]
-  setBlogs: (blogs: Blog[]) => void
   onLogout: () => void
+  onBlogUpdate: () => void
 }
 
-export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProps) {
+export function AdminDashboard({ onLogout, onBlogUpdate }: AdminDashboardProps) {
+  const [blogs, setBlogs] = useState<Blog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
@@ -43,35 +46,87 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
 
   const categories = ["Technology", "Design", "Development", "Business", "Lifestyle"]
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (editingId) {
-      // Update existing blog
-      setBlogs(blogs.map((blog) => (blog.id === editingId ? { ...blog, ...formData } : blog)))
+  const fetchBlogs = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/blogs")
+      if (!response.ok) throw new Error("Failed to fetch blogs")
+      const data = await response.json()
+      setBlogs(data)
+    } catch (error) {
       toast({
-        title: "Blog updated",
-        description: "Your blog post has been updated successfully.",
+        title: "Error",
+        description: "Failed to fetch blogs",
+        variant: "destructive",
       })
-      setEditingId(null)
-    } else {
-      // Create new blog
-      const newBlog: Blog = {
-        id: Date.now(),
-        ...formData,
-        author: "Admin",
-        date: new Date().toISOString().split("T")[0],
-        image: formData.image || `/placeholder.svg?height=200&width=400&query=${encodeURIComponent(formData.title)}`,
-      }
-      setBlogs([newBlog, ...blogs])
-      toast({
-        title: "Blog created",
-        description: "Your new blog post has been published.",
-      })
-      setIsCreating(false)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setFormData({ title: "", excerpt: "", content: "", category: "", image: "" })
+  useEffect(() => {
+    fetchBlogs()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      const blogData = {
+        ...formData,
+        author: "Admin", // Set default author as Admin
+      }
+
+      if (editingId) {
+        const response = await fetch(`/api/blogs/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(blogData),
+        })
+
+        if (!response.ok) throw new Error("Failed to update blog")
+
+        toast({
+          title: "Blog updated",
+          description: "Your blog post has been updated successfully.",
+        })
+        setEditingId(null)
+      } else {
+        console.log("[v0] Sending blog data:", blogData)
+
+        const response = await fetch("/api/blogs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(blogData),
+        })
+
+        console.log("[v0] API response status:", response.status)
+        const responseData = await response.json()
+        console.log("[v0] API response data:", responseData)
+
+        if (!response.ok) throw new Error(`Failed to create blog: ${responseData.error || "Unknown error"}`)
+
+        toast({
+          title: "Blog created",
+          description: "Your new blog post has been published.",
+        })
+        setIsCreating(false)
+      }
+
+      setFormData({ title: "", excerpt: "", content: "", category: "", image: "" })
+      await fetchBlogs()
+      onBlogUpdate()
+    } catch (error) {
+      console.log("[v0] Error creating blog:", error)
+      toast({
+        title: "Error",
+        description: editingId ? "Failed to update blog" : "Failed to create blog",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEdit = (blog: Blog) => {
@@ -82,16 +137,32 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
       category: blog.category,
       image: blog.image,
     })
-    setEditingId(blog.id)
+    setEditingId(blog._id)
     setIsCreating(true)
   }
 
-  const handleDelete = (id: number) => {
-    setBlogs(blogs.filter((blog) => blog.id !== id))
-    toast({
-      title: "Blog deleted",
-      description: "The blog post has been removed.",
-    })
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/blogs/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) throw new Error("Failed to delete blog")
+
+      toast({
+        title: "Blog deleted",
+        description: "The blog post has been removed.",
+      })
+
+      await fetchBlogs()
+      onBlogUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete blog",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCancel = () => {
@@ -102,7 +173,6 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -122,7 +192,6 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Create/Edit Form */}
         {isCreating && (
           <Card className="mb-8">
             <CardHeader>
@@ -191,9 +260,18 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
                   />
                 </div>
                 <div className="flex space-x-2">
-                  <Button type="submit" className="bg-accent hover:bg-accent/90">
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingId ? "Update Post" : "Publish Post"}
+                  <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {editingId ? "Updating..." : "Publishing..."}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {editingId ? "Update Post" : "Publish Post"}
+                      </>
+                    )}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     <X className="h-4 w-4 mr-2" />
@@ -205,11 +283,15 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
           </Card>
         )}
 
-        {/* Blog Posts List */}
         <div className="space-y-6">
           <h2 className="text-xl font-semibold font-heading">Manage Posts ({blogs.length})</h2>
 
-          {blogs.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              <span className="ml-2 text-muted-foreground">Loading blogs...</span>
+            </div>
+          ) : blogs.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">No blog posts yet. Create your first post!</p>
@@ -218,7 +300,7 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
           ) : (
             <div className="grid gap-6">
               {blogs.map((blog) => (
-                <Card key={blog.id}>
+                <Card key={blog._id}>
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="md:w-32 md:h-20 w-full h-32 flex-shrink-0">
@@ -242,6 +324,7 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
                                 {blog.author}
                               </div>
                               <Badge variant="secondary">{blog.category}</Badge>
+                              <span className="text-xs">{blog.readTime}</span>
                             </div>
                           </div>
                           <div className="flex space-x-2">
@@ -251,7 +334,7 @@ export function AdminDashboard({ blogs, setBlogs, onLogout }: AdminDashboardProp
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDelete(blog.id)}
+                              onClick={() => handleDelete(blog._id)}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Lock, Mail } from "lucide-react"
+import { ArrowLeft, Lock, Mail, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface AdminLoginProps {
@@ -25,24 +25,37 @@ export function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    if (email === "admin@gmail.com" && password === "admin123") {
-      toast({
-        title: "Login successful",
-        description: "Welcome to the admin dashboard!",
+    try {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       })
-      onLogin()
-    } else {
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Login successful",
+          description: "Welcome to the admin dashboard!",
+        })
+        onLogin()
+      } else {
+        toast({
+          title: "Login failed",
+          description: data.message || "Invalid credentials. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
       toast({
         title: "Login failed",
-        description: "Invalid credentials. Please try again.",
+        description: "An error occurred. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -94,7 +107,14 @@ export function AdminLogin({ onLogin, onBack }: AdminLoginProps) {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
             <div className="mt-4 p-3 bg-muted rounded-md">
