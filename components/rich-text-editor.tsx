@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,86 +19,149 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const [imageUrl, setImageUrl] = useState("")
 
   useEffect(() => {
-    if (editorRef.current && !editorRef.current.innerHTML) {
+    if (editorRef.current && value !== editorRef.current.innerHTML) {
       editorRef.current.innerHTML = value || ""
-      // Force left-to-right direction
-      editorRef.current.style.direction = "ltr"
-      editorRef.current.style.textAlign = "left"
-      editorRef.current.style.unicodeBidi = "embed"
     }
-  }, [])
+  }, [value])
 
-  const executeCommand = (command: string, value?: string) => {
-    if (editorRef.current) {
-      editorRef.current.focus()
+  const saveSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      return selection.getRangeAt(0)
     }
-    document.execCommand(command, false, value)
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML)
+    return null
+  }
+
+  const restoreSelection = (range: Range | null) => {
+    if (range) {
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
     }
   }
 
+  const executeCommand = (command: string, value?: string) => {
+    if (!editorRef.current) return
+
+    editorRef.current.focus()
+    const range = saveSelection()
+
+    try {
+      document.execCommand(command, false, value)
+    } catch (error) {
+      console.log("[v0] Command failed:", command, error)
+    }
+
+    onChange(editorRef.current.innerHTML)
+  }
+
+  const insertImageAtCursor = (url: string) => {
+    if (!editorRef.current) return
+
+    editorRef.current.focus()
+    const selection = window.getSelection()
+
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+
+      // Create image element
+      const img = document.createElement("img")
+      img.src = url
+      img.alt = "Blog image"
+      img.style.cssText = "max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;"
+
+      // Insert at cursor
+      range.deleteContents()
+      range.insertNode(img)
+
+      // Move cursor after image
+      range.setStartAfter(img)
+      range.setEndAfter(img)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    } else {
+      // Fallback: append to end
+      const img = document.createElement("img")
+      img.src = url
+      img.alt = "Blog image"
+      img.style.cssText = "max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;"
+      editorRef.current.appendChild(img)
+    }
+
+    onChange(editorRef.current.innerHTML)
+    console.log("[v0] Image inserted at cursor:", url)
+  }
+
   const insertImage = () => {
-    if (imageUrl && editorRef.current) {
-      editorRef.current.focus()
-      const imgHtml = `<img src="${imageUrl}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;" />`
-
-      // Insert at cursor position
-      const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        range.deleteContents()
-        const imgElement = document.createElement("div")
-        imgElement.innerHTML = imgHtml
-        range.insertNode(imgElement.firstChild!)
-        range.collapse(false)
-      } else {
-        // Fallback: append to end
-        editorRef.current.innerHTML += imgHtml
-      }
-
-      onChange(editorRef.current.innerHTML)
+    if (imageUrl) {
+      insertImageAtCursor(imageUrl)
       setImageUrl("")
       setShowImageDialog(false)
-
-      console.log("[v0] Image inserted:", imageUrl)
     }
   }
 
   const handleImageUpload = (url: string) => {
-    if (editorRef.current) {
-      editorRef.current.focus()
-      const imgHtml = `<img src="${url}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px; display: block;" />`
-
-      const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        range.deleteContents()
-        const imgElement = document.createElement("div")
-        imgElement.innerHTML = imgHtml
-        range.insertNode(imgElement.firstChild!)
-        range.collapse(false)
-      } else {
-        editorRef.current.innerHTML += imgHtml
-      }
-
-      onChange(editorRef.current.innerHTML)
-      setShowImageDialog(false)
-
-      console.log("[v0] Uploaded image inserted:", url)
-    }
+    insertImageAtCursor(url)
+    setShowImageDialog(false)
   }
 
   const formatHeading = (level: number) => {
-    executeCommand("formatBlock", `h${level}`)
+    if (!editorRef.current) return
+
+    editorRef.current.focus()
+    const selection = window.getSelection()
+
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+
+      // Get the current block element
+      let blockElement = range.commonAncestorContainer
+      if (blockElement.nodeType === Node.TEXT_NODE) {
+        blockElement = blockElement.parentNode!
+      }
+
+      // Find the closest block element
+      while (
+        blockElement &&
+        blockElement !== editorRef.current &&
+        !["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6"].includes((blockElement as Element).tagName)
+      ) {
+        blockElement = blockElement.parentNode!
+      }
+
+      if (blockElement && blockElement !== editorRef.current) {
+        const heading = document.createElement(`h${level}`)
+        heading.innerHTML = (blockElement as Element).innerHTML
+        heading.style.cssText = "margin: 16px 0; font-weight: bold;"
+
+        if (blockElement.parentNode) {
+          blockElement.parentNode.replaceChild(heading, blockElement)
+        }
+
+        // Restore cursor position
+        const newRange = document.createRange()
+        newRange.selectNodeContents(heading)
+        newRange.collapse(false)
+        selection.removeAllRanges()
+        selection.addRange(newRange)
+      }
+    }
+
+    onChange(editorRef.current.innerHTML)
   }
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const target = e.currentTarget
-    // Ensure direction stays left-to-right
-    target.style.direction = "ltr"
-    target.style.textAlign = "left"
     onChange(target.innerHTML)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      executeCommand("insertHTML", "<br><br>")
+    }
   }
 
   return (
@@ -158,23 +220,17 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[300px] p-4 focus:outline-none prose max-w-none"
+        className="min-h-[300px] p-4 focus:outline-none"
         style={{
           direction: "ltr",
           textAlign: "left",
           lineHeight: "1.6",
           fontSize: "16px",
-          unicodeBidi: "embed",
-          writingMode: "lr-tb",
         }}
         onInput={handleInput}
-        onFocus={() => {
-          if (editorRef.current) {
-            editorRef.current.style.direction = "ltr"
-            editorRef.current.style.textAlign = "left"
-          }
-        }}
+        onKeyDown={handleKeyDown}
         suppressContentEditableWarning={true}
+        placeholder={placeholder}
       />
 
       {showImageDialog && (
