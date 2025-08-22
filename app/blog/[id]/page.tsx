@@ -65,7 +65,7 @@ export default function BlogDetailPage() {
     return () => window.removeEventListener("scroll", updateReadingProgress)
   }, [])
 
-  const shareUrl = window.location.href
+  const shareUrl = typeof window !== "undefined" ? window.location.href : ""
   const shareTitle = blog?.title || ""
   const shareText = blog?.excerpt || ""
 
@@ -259,8 +259,6 @@ export default function BlogDetailPage() {
                   </div>
                 )}
               </div>
-
-
             </div>
           </header>
 
