@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Calendar, User, ArrowRight, PenTool, Loader2 } from "lucide-react"
-import { AdminLogin } from "@/components/admin-login"
-import { AdminDashboard } from "@/components/admin-dashboard"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Search, Calendar, User, ArrowRight, PenTool, Loader2, Filter, X } from "lucide-react"
+import Navigation from "@/components/navigation"
+import Link from "next/link"
 
 interface Blog {
   _id: string
@@ -27,10 +28,19 @@ export default function BlogHomepage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
-  const [isAdminMode, setIsAdminMode] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [selectedAuthor, setSelectedAuthor] = useState("All")
+  const [sortBy, setSortBy] = useState("newest")
+  const [showFilters, setShowFilters] = useState(false)
 
-  const categories = ["All", "Technology", "Design", "Development", "Business", "Lifestyle"]
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(blogs.map((blog) => blog.category)))
+    return ["All", ...uniqueCategories.sort()]
+  }, [blogs])
+
+  const authors = useMemo(() => {
+    const uniqueAuthors = Array.from(new Set(blogs.map((blog) => blog.author)))
+    return ["All", ...uniqueAuthors.sort()]
+  }, [blogs])
 
   const fetchBlogs = async () => {
     try {
@@ -54,57 +64,50 @@ export default function BlogHomepage() {
     fetchBlogs()
   }, [])
 
-  const filteredBlogs = blogs.filter((blog) => {
-    const matchesSearch =
-      blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      blog.excerpt.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === "All" || blog.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  const filteredAndSortedBlogs = useMemo(() => {
+    const filtered = blogs.filter((blog) => {
+      const matchesSearch =
+        blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.author.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesCategory = selectedCategory === "All" || blog.category === selectedCategory
+      const matchesAuthor = selectedAuthor === "All" || blog.author === selectedAuthor
+      return matchesSearch && matchesCategory && matchesAuthor
+    })
 
-  if (isAdminMode && !isLoggedIn) {
-    return <AdminLogin onLogin={() => setIsLoggedIn(true)} onBack={() => setIsAdminMode(false)} />
+    // Sort blogs
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.date).getTime() - new Date(a.date).getTime()
+        case "oldest":
+          return new Date(a.date).getTime() - new Date(b.date).getTime()
+        case "title":
+          return a.title.localeCompare(b.title)
+        case "author":
+          return a.author.localeCompare(b.author)
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [blogs, searchTerm, selectedCategory, selectedAuthor, sortBy])
+
+  const clearAllFilters = () => {
+    setSearchTerm("")
+    setSelectedCategory("All")
+    setSelectedAuthor("All")
+    setSortBy("newest")
   }
 
-  if (isAdminMode && isLoggedIn) {
-    return (
-      <AdminDashboard
-        onLogout={() => {
-          setIsLoggedIn(false)
-          setIsAdminMode(false)
-        }}
-        onBlogUpdate={fetchBlogs}
-      />
-    )
-  }
+  const hasActiveFilters = searchTerm || selectedCategory !== "All" || selectedAuthor !== "All" || sortBy !== "newest"
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <PenTool className="h-8 w-8 text-accent" />
-              <h1 className="text-2xl font-bold font-heading text-foreground">BlogSpace</h1>
-            </div>
-            <nav className="hidden md:flex items-center space-x-6">
-              <a href="#" className="text-foreground hover:text-accent transition-colors">
-                Home
-              </a>
-              <a href="#" className="text-foreground hover:text-accent transition-colors">
-                Categories
-              </a>
-              <a href="#" className="text-foreground hover:text-accent transition-colors">
-                About
-              </a>
-              <Button variant="outline" size="sm" onClick={() => setIsAdminMode(true)}>
-                Admin
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      {/* Navigation */}
+      <Navigation />
 
       {/* Hero Section */}
       <section className="py-16 px-4">
@@ -121,31 +124,130 @@ export default function BlogHomepage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               type="text"
-              placeholder="Search articles..."
+              placeholder="Search articles, authors..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchTerm("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
-          {/* Category Filter */}
-          <div className="flex flex-wrap justify-center gap-2 mb-12">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
+          {/* Filter Toggle for Mobile */}
+          <div className="md:hidden mb-4">
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="w-full">
+              <Filter className="h-4 w-4 mr-2" />
+              Filters{" "}
+              {hasActiveFilters &&
+                `(${[searchTerm, selectedCategory !== "All" ? selectedCategory : "", selectedAuthor !== "All" ? selectedAuthor : ""].filter(Boolean).length})`}
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className={`${showFilters ? "block" : "hidden"} md:block space-y-4 md:space-y-0`}>
+            {/* Category Filter */}
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                  className="transition-all duration-200"
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+
+            {/* Advanced Filters */}
+            <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Author:</label>
+                <Select value={selectedAuthor} onValueChange={setSelectedAuthor}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {authors.map((author) => (
+                      <SelectItem key={author} value={author}>
+                        {author}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Sort by:</label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="title">Title A-Z</SelectItem>
+                    <SelectItem value="author">Author A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="py-8 px-4">
         <div className="container mx-auto">
+          {/* Results count */}
+          {!loading && !error && (
+            <div className="mb-6 flex justify-between items-center">
+              <p className="text-muted-foreground">
+                {filteredAndSortedBlogs.length} article{filteredAndSortedBlogs.length !== 1 ? "s" : ""} found
+                {searchTerm && ` for "${searchTerm}"`}
+                {selectedCategory !== "All" && ` in ${selectedCategory}`}
+                {selectedAuthor !== "All" && ` by ${selectedAuthor}`}
+              </p>
+              {hasActiveFilters && (
+                <div className="flex gap-2 flex-wrap">
+                  {searchTerm && (
+                    <Badge variant="secondary" className="gap-1">
+                      Search: {searchTerm}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchTerm("")} />
+                    </Badge>
+                  )}
+                  {selectedCategory !== "All" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {selectedCategory}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory("All")} />
+                    </Badge>
+                  )}
+                  {selectedAuthor !== "All" && (
+                    <Badge variant="secondary" className="gap-1">
+                      {selectedAuthor}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedAuthor("All")} />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -160,11 +262,11 @@ export default function BlogHomepage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredBlogs.map((blog) => (
+              {filteredAndSortedBlogs.map((blog) => (
                 <Card key={blog._id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
                   <div className="aspect-video overflow-hidden">
                     <img
-                      src={blog.image || "/placeholder.svg"}
+                      src={blog.image || "/placeholder.svg?height=200&width=400&query=blog post"}
                       alt={blog.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -188,10 +290,12 @@ export default function BlogHomepage() {
                         <User className="h-4 w-4 mr-1" />
                         {blog.author} • {blog.readTime}
                       </div>
-                      <Button variant="ghost" size="sm" className="group/btn">
-                        Read More
-                        <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                      </Button>
+                      <Link href={`/blog/${blog._id}`}>
+                        <Button variant="ghost" size="sm" className="group/btn">
+                          Read More
+                          <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
@@ -199,9 +303,14 @@ export default function BlogHomepage() {
             </div>
           )}
 
-          {!loading && !error && filteredBlogs.length === 0 && (
+          {!loading && !error && filteredAndSortedBlogs.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground text-lg">No articles found matching your search.</p>
+              <p className="text-muted-foreground text-lg mb-4">No articles found matching your criteria.</p>
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearAllFilters}>
+                  Clear All Filters
+                </Button>
+              )}
             </div>
           )}
         </div>

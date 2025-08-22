@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { PlusCircle, Edit, Trash2, LogOut, Calendar, User, Save, X, Loader2 } from "lucide-react"
+import { PlusCircle, Edit, Trash2, LogOut, Calendar, User, Save, X, Loader2, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface Blog {
   _id: string
@@ -176,7 +177,15 @@ export function AdminDashboard({ onLogout, onBlogUpdate }: AdminDashboardProps) 
       <header className="bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold font-heading">Admin Dashboard</h1>
+            <div className="flex items-center space-x-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Site
+                </Button>
+              </Link>
+              <h1 className="text-2xl font-bold font-heading">Admin Dashboard</h1>
+            </div>
             <div className="flex items-center space-x-4">
               <Button onClick={() => setIsCreating(true)} className="bg-accent hover:bg-accent/90">
                 <PlusCircle className="h-4 w-4 mr-2" />
