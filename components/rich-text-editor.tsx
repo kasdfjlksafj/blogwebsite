@@ -4,20 +4,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import ImageUpload from "./image-upload"
-import {
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Quote,
-  ImageIcon,
-  Link,
-  Type,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-} from "lucide-react"
+import { Bold, Italic, List, ListOrdered, ImageIcon, Type } from "lucide-react"
 
 interface RichTextEditorProps {
   value: string
@@ -28,10 +15,7 @@ interface RichTextEditorProps {
 export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const [showImageDialog, setShowImageDialog] = useState(false)
-  const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [imageUrl, setImageUrl] = useState("")
-  const [linkUrl, setLinkUrl] = useState("")
-  const [linkText, setLinkText] = useState("")
 
   const executeCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value)
@@ -44,7 +28,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     if (imageUrl) {
       executeCommand(
         "insertHTML",
-        `<img src="${imageUrl}" alt="Blog image" class="w-full max-w-2xl rounded-lg shadow-md my-6 mx-auto block" />`,
+        `<img src="${imageUrl}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px;" />`,
       )
       setImageUrl("")
       setShowImageDialog(false)
@@ -54,21 +38,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const handleImageUpload = (url: string) => {
     executeCommand(
       "insertHTML",
-      `<img src="${url}" alt="Blog image" class="w-full max-w-2xl rounded-lg shadow-md my-6 mx-auto block" />`,
+      `<img src="${url}" alt="Blog image" style="max-width: 100%; height: auto; margin: 16px 0; border-radius: 8px;" />`,
     )
     setShowImageDialog(false)
-  }
-
-  const insertLink = () => {
-    if (linkUrl && linkText) {
-      executeCommand(
-        "insertHTML",
-        `<a href="${linkUrl}" class="text-primary hover:text-primary/80 underline">${linkText}</a>`,
-      )
-      setLinkUrl("")
-      setLinkText("")
-      setShowLinkDialog(false)
-    }
   }
 
   const formatHeading = (level: number) => {
@@ -76,23 +48,22 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-card">
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-3 border-b border-border bg-muted/50">
+    <div className="border rounded-lg overflow-hidden bg-white">
+      <div className="flex flex-wrap gap-1 p-2 border-b bg-gray-50">
         <Button type="button" variant="ghost" size="sm" onClick={() => formatHeading(1)} className="h-8 px-2">
-          <Type className="h-4 w-4" />
+          <Type className="h-4 w-4 mr-1" />
           H1
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => formatHeading(2)} className="h-8 px-2">
-          <Type className="h-4 w-4" />
+          <Type className="h-4 w-4 mr-1" />
           H2
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => formatHeading(3)} className="h-8 px-2">
-          <Type className="h-4 w-4" />
+          <Type className="h-4 w-4 mr-1" />
           H3
         </Button>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-gray-300 mx-1" />
 
         <Button type="button" variant="ghost" size="sm" onClick={() => executeCommand("bold")} className="h-8 px-2">
           <Bold className="h-4 w-4" />
@@ -100,47 +71,8 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         <Button type="button" variant="ghost" size="sm" onClick={() => executeCommand("italic")} className="h-8 px-2">
           <Italic className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("underline")}
-          className="h-8 px-2"
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
 
-        <div className="w-px h-6 bg-border mx-1" />
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("justifyLeft")}
-          className="h-8 px-2"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("justifyCenter")}
-          className="h-8 px-2"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("justifyRight")}
-          className="h-8 px-2"
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-gray-300 mx-1" />
 
         <Button
           type="button"
@@ -160,32 +92,24 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => executeCommand("formatBlock", "blockquote")}
-          className="h-8 px-2"
-        >
-          <Quote className="h-4 w-4" />
-        </Button>
 
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className="w-px h-6 bg-gray-300 mx-1" />
 
         <Button type="button" variant="ghost" size="sm" onClick={() => setShowImageDialog(true)} className="h-8 px-2">
           <ImageIcon className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setShowLinkDialog(true)} className="h-8 px-2">
-          <Link className="h-4 w-4" />
-        </Button>
       </div>
 
-      {/* Editor */}
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[300px] p-4 focus:outline-none blog-content prose prose-lg max-w-none"
-        style={{ whiteSpace: "pre-wrap" }}
+        className="min-h-[300px] p-4 focus:outline-none"
+        style={{
+          direction: "ltr",
+          textAlign: "left",
+          lineHeight: "1.6",
+          fontSize: "16px",
+        }}
         dangerouslySetInnerHTML={{ __html: value }}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         data-placeholder={placeholder}
@@ -193,8 +117,8 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
       {showImageDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">Insert Image</h3>
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">Add Image</h3>
 
             <div className="space-y-4">
               <div>
@@ -202,14 +126,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
                 <ImageUpload onImageUploaded={handleImageUpload} />
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
+              <div className="text-center text-gray-500">or</div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Image URL</label>
@@ -223,38 +140,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
             <div className="flex gap-2 mt-6">
               <Button onClick={insertImage} disabled={!imageUrl} className="flex-1">
-                Insert URL
+                Add Image
               </Button>
               <Button variant="outline" onClick={() => setShowImageDialog(false)} className="flex-1">
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Link Dialog */}
-      {showLinkDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96">
-            <h3 className="text-lg font-semibold mb-4">Insert Link</h3>
-            <Input
-              placeholder="Link URL"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              className="mb-3"
-            />
-            <Input
-              placeholder="Link Text"
-              value={linkText}
-              onChange={(e) => setLinkText(e.target.value)}
-              className="mb-4"
-            />
-            <div className="flex gap-2">
-              <Button onClick={insertLink} className="flex-1">
-                Insert
-              </Button>
-              <Button variant="outline" onClick={() => setShowLinkDialog(false)} className="flex-1">
                 Cancel
               </Button>
             </div>
